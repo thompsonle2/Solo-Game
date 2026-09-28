@@ -1,9 +1,19 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using TMPro;
 
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerController : MonoBehaviour
 {
+    [Header("Game Manager")]
+    public GameManager gameManager;
+
+    [Header("Player Health")]
+    public float playerHealth = 100f;
+
+    //[Header("UI & Score")] // Added UI settings
+   // [Tooltip("TextMeshPro component displaying the score.")]
+
     [Header("Movement")]
     [Tooltip("Movement speed (units/sec).")]
     public float speed = 5.0f;
@@ -37,19 +47,24 @@ public class PlayerController : MonoBehaviour
     private Rigidbody rb;
     private float cameraPitch = 0.0f;
     private bool isGrounded;
+    private bool isDead = false;
 
+   // private int score = 0;
+    //private int totalEnemies = 0;
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
-
-       /* // Lock mouse cursor to the center of the game screen and hide it
-       replaced with crosshair cursor
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false; */
+        //hunt down gamemanager if not there
+        if (gameManager == null)
+        {
+            gameManager = FindFirstObjectByType<GameManager>();
+        }
     }
 
     private void Update()
     {
+        if (isDead) return;
+
         HandleMouseLook();
         HandleJump();
         HandleShooting();
@@ -57,6 +72,8 @@ public class PlayerController : MonoBehaviour
 
     private void FixedUpdate()
     {
+        if (isDead) return;
+
         HandleMovement();
     }
 
@@ -138,6 +155,73 @@ public class PlayerController : MonoBehaviour
             {
                 enemy.TakeDamage(damage);
             }
+
+        // Check for SideEnemy (Side-to-Side)
+        SideEnemy sideEnemy = hit.collider.GetComponent<SideEnemy>();
+        if (sideEnemy != null)
+        {
+            sideEnemy.TakeDamage(damage);
+        }
+        }
+    }
+    // update score when enemy dies
+    /*public void AddScore(int amount = 1)
+    {
+        score += amount;
+        UpdateScoreUI();
+    }
+
+    private void UpdateScoreUI()
+    {
+        if (scoreText != null)
+        {
+            scoreText.text = $"Score: {score}/{totalEnemies}";
+        }
+    }*/
+
+    // Detects collision with enemies
+    private void OnTriggerEnter(Collider other)
+    {
+        // Check if the collided object has the "Enemy" tag
+        if (other.CompareTag("Enemy"))
+        {
+            Die();
+        }
+    }
+
+    // Also handles physical (non-trigger) collisions
+    private void OnCollisionEnter(Collision collision)
+    {
+        if (collision.gameObject.CompareTag("Enemy"))
+        {
+            Die();
+        }
+    }
+
+    public void Die()
+    {
+        if (!isDead)
+        {
+            isDead = true;
+            Debug.Log("Player Died!");
+
+            if (gameManager != null)
+            {
+                gameManager.gameOver();
+            }
+            else
+            {
+                Debug.LogError("GameManager is missing on PlayerController!");
+            }
+
+            // Unlock cursor so player can click Game Over screen buttons
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
+         //   gameObject.SetActive(false);
+            // attempt to make camera go away when player dies
+            rb.isKinematic = true;
+            this.enabled = false; 
         }
     }
 }
